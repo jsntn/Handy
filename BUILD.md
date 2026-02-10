@@ -91,11 +91,13 @@ On Windows, the build process creates multiple distribution formats:
 The portable build is a ZIP archive containing:
 - `Handy.exe` - The application executable
 - `resources/` - All required resources (models, icons, sounds)
+- `PORTABLE_README.txt` - Usage instructions and troubleshooting guide
 
 **To use the portable build:**
 1. Extract the ZIP file to any directory
-2. Run `Handy.exe` directly (no installation required)
-3. All application data and settings are stored in your user profile
+2. Read `PORTABLE_README.txt` for detailed instructions
+3. Run `Handy.exe` directly (no installation required)
+4. All application data and settings are stored in your user profile
 
 **Note:** The portable build requires:
 - Windows 10/11 (x64 or ARM64 depending on the build)

@@ -401,6 +401,13 @@ jobs:
             Copy-Item -Path $resourcesSource -Destination "$tempDir/resources" -Recurse -Force
           }
           
+          # Copy portable README if it exists
+          $readmePath = "src-tauri/PORTABLE_README.txt"
+          if (Test-Path $readmePath) {
+            Write-Host "Copying README..."
+            Copy-Item -Path $readmePath -Destination "$tempDir/PORTABLE_README.txt" -Force
+          }
+          
           # Create ZIP archive
           $arch = if ($target -match "aarch64") { "arm64" } else { "x64" }
           $zipName = "Handy_${version}_${arch}_portable.zip"

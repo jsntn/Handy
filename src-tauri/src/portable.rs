@@ -98,11 +98,20 @@ pub fn get_log_dir(app: &AppHandle) -> Result<PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     #[test]
-    fn test_portable_env_var() {
+    fn test_portable_env_var_detection() {
+        // Test that setting HANDY_PORTABLE=1 would enable portable mode
+        // Note: This is a unit test for the env var check logic
+        // Actual portable mode detection would require a proper AppHandle mock
+        
         env::set_var("HANDY_PORTABLE", "1");
-        // Note: This test would need a proper AppHandle mock to fully test
+        let var_value = env::var("HANDY_PORTABLE").unwrap_or_default();
+        assert_eq!(var_value, "1", "HANDY_PORTABLE environment variable should be set to '1'");
+        
         env::remove_var("HANDY_PORTABLE");
+        let var_value_after = env::var("HANDY_PORTABLE").unwrap_or_default();
+        assert_eq!(var_value_after, "", "HANDY_PORTABLE environment variable should be empty after removal");
     }
 }

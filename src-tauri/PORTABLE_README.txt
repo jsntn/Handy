@@ -73,7 +73,7 @@ SWITCHING BETWEEN PORTABLE AND INSTALLED MODE
 - To use normal installed mode: Delete the .portable file
 
 Without the .portable file, Handy will use the standard Windows app data
-folder (%APPDATA%\handy\) instead of the local data/ directory.
+folder (%APPDATA%\com.pais.handy\) instead of the local data/ directory.
 
 
 TROUBLESHOOTING

@@ -90,14 +90,34 @@ On Windows, the build process creates multiple distribution formats:
 
 The portable build is a ZIP archive containing:
 - `Handy.exe` - The application executable
+- `.portable` - Marker file that enables portable mode
+- `data/` - Directory for all app data (auto-created on first run)
 - `resources/` - All required resources (models, icons, sounds)
 - `PORTABLE_README.txt` - Usage instructions and troubleshooting guide
+
+**Portable Mode:**
+
+When the `.portable` file is present next to the executable, Handy runs in portable mode:
+- All app data is stored in `{exe_dir}/data/` instead of the user's AppData folder
+- Settings: `data/settings_store.json`
+- Database: `data/history.db`
+- Models: `data/models/`
+- Recordings: `data/recordings/`
+- Logs: `data/logs/`
+
+This makes the application truly portable - you can move the entire folder to a USB drive or different computer and all settings and data move with it.
 
 **To use the portable build:**
 1. Extract the ZIP file to any directory
 2. Read `PORTABLE_README.txt` for detailed instructions
 3. Run `Handy.exe` directly (no installation required)
-4. All application data and settings are stored in your user profile
+4. All application data and settings are stored in the `data/` subdirectory
+
+**To switch between modes:**
+- Portable mode: Keep the `.portable` file next to the executable
+- Normal mode: Delete the `.portable` file (data will be stored in AppData)
+
+You can also enable portable mode by setting the environment variable `HANDY_PORTABLE=1`.
 
 **Note:** The portable build requires:
 - Windows 10/11 (x64 or ARM64 depending on the build)

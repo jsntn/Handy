@@ -1,8 +1,11 @@
+use crate::portable;
 use log::{debug, warn};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use specta::Type;
 use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
 
@@ -547,6 +550,61 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
 
 pub const SETTINGS_STORE_PATH: &str = "settings_store.json";
 
+/// Get the settings file path for portable mode
+fn get_portable_settings_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let data_dir = portable::get_app_data_dir(app)?;
+    Ok(data_dir.join(SETTINGS_STORE_PATH))
+}
+
+/// Load settings from portable mode file
+fn load_portable_settings(app: &AppHandle) -> Option<AppSettings> {
+    let settings_path = get_portable_settings_path(app).ok()?;
+    
+    if !settings_path.exists() {
+        debug!("Portable settings file does not exist");
+        return None;
+    }
+    
+    match fs::read_to_string(&settings_path) {
+        Ok(content) => {
+            match serde_json::from_str::<AppSettings>(&content) {
+                Ok(settings) => {
+                    debug!("Loaded settings from portable file: {:?}", settings_path);
+                    Some(settings)
+                }
+                Err(e) => {
+                    warn!("Failed to parse portable settings: {}", e);
+                    None
+                }
+            }
+        }
+        Err(e) => {
+            warn!("Failed to read portable settings file: {}", e);
+            None
+        }
+    }
+}
+
+/// Save settings to portable mode file
+fn save_portable_settings(app: &AppHandle, settings: &AppSettings) -> Result<(), String> {
+    let settings_path = get_portable_settings_path(app)?;
+    
+    // Ensure parent directory exists
+    if let Some(parent) = settings_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create settings directory: {}", e))?;
+    }
+    
+    let content = serde_json::to_string_pretty(settings)
+        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+    
+    fs::write(&settings_path, content)
+        .map_err(|e| format!("Failed to write settings file: {}", e))?;
+    
+    debug!("Saved settings to portable file: {:?}", settings_path);
+    Ok(())
+}
+
 pub fn get_default_settings() -> AppSettings {
     #[cfg(target_os = "windows")]
     let default_shortcut = "ctrl+space";
@@ -666,6 +724,38 @@ impl AppSettings {
 }
 
 pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
+    // Check if we're in portable mode
+    if portable::is_portable_mode(app) {
+        debug!("Loading settings in portable mode");
+        let mut settings = load_portable_settings(app).unwrap_or_else(|| {
+            debug!("Creating default settings for portable mode");
+            get_default_settings()
+        });
+        
+        // Merge default bindings
+        let default_settings = get_default_settings();
+        let mut updated = false;
+        
+        for (key, value) in default_settings.bindings {
+            if !settings.bindings.contains_key(&key) {
+                debug!("Adding missing binding: {}", key);
+                settings.bindings.insert(key, value);
+                updated = true;
+            }
+        }
+        
+        if ensure_post_process_defaults(&mut settings) {
+            updated = true;
+        }
+        
+        if updated {
+            let _ = save_portable_settings(app, &settings);
+        }
+        
+        return settings;
+    }
+    
+    // Normal mode: use tauri-plugin-store
     // Initialize store
     let store = app
         .store(SETTINGS_STORE_PATH)
@@ -717,6 +807,23 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
 }
 
 pub fn get_settings(app: &AppHandle) -> AppSettings {
+    // Check if we're in portable mode
+    if portable::is_portable_mode(app) {
+        let mut settings = load_portable_settings(app).unwrap_or_else(|| {
+            debug!("No portable settings found, using defaults");
+            let default_settings = get_default_settings();
+            let _ = save_portable_settings(app, &default_settings);
+            default_settings
+        });
+        
+        if ensure_post_process_defaults(&mut settings) {
+            let _ = save_portable_settings(app, &settings);
+        }
+        
+        return settings;
+    }
+    
+    // Normal mode: use tauri-plugin-store
     let store = app
         .store(SETTINGS_STORE_PATH)
         .expect("Failed to initialize store");
@@ -741,6 +848,15 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
 }
 
 pub fn write_settings(app: &AppHandle, settings: AppSettings) {
+    // Check if we're in portable mode
+    if portable::is_portable_mode(app) {
+        if let Err(e) = save_portable_settings(app, &settings) {
+            warn!("Failed to save portable settings: {}", e);
+        }
+        return;
+    }
+    
+    // Normal mode: use tauri-plugin-store
     let store = app
         .store(SETTINGS_STORE_PATH)
         .expect("Failed to initialize store");

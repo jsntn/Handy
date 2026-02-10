@@ -394,6 +394,15 @@ jobs:
           # Copy the executable
           Copy-Item -Path $exePath.FullName -Destination "$tempDir/Handy.exe" -Force
           
+          # Create .portable marker file to enable portable mode
+          New-Item -ItemType File -Path "$tempDir/.portable" -Force | Out-Null
+          Write-Host "Created .portable marker file"
+          
+          # Create empty data directory for portable mode
+          $dataDir = "$tempDir/data"
+          New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+          Write-Host "Created data directory for portable mode"
+          
           # Copy resources directory if it exists
           $resourcesSource = "src-tauri/resources"
           if (Test-Path $resourcesSource) {

@@ -355,6 +355,117 @@ jobs:
             echo "No AppImage found to process"
           fi
 
+      - name: Create portable ZIP (Windows)
+        if: contains(inputs.platform, 'windows')
+        shell: pwsh
+        run: |
+          # Determine the build profile and target directory
+          $profile = "${{ steps.build-profile.outputs.profile }}"
+          $target = "${{ inputs.target }}"
+          $version = "${{ steps.get-version.outputs.version }}"
+          
+          # Set the base path for the build output
+          if ($target -and $target -ne "x86_64-pc-windows-msvc") {
+            $basePath = "src-tauri/target/$target/$profile"
+          } else {
+            $basePath = "src-tauri/target/$profile"
+          }
+          
+          Write-Host "Base path: $basePath"
+          
+          # Create portable directory
+          $portableDir = "$basePath/bundle/portable"
+          New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+          
+          # Find the main executable
+          $exePath = Get-ChildItem -Path "$basePath" -Filter "Handy.exe" -File | Select-Object -First 1
+          
+          if (-not $exePath) {
+            Write-Host "Error: Could not find Handy.exe in $basePath"
+            exit 1
+          }
+          
+          Write-Host "Found executable: $($exePath.FullName)"
+          
+          # Create a temporary directory for the portable package
+          $tempDir = "$portableDir/Handy-portable-temp"
+          New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
+          
+          # Copy the executable
+          Copy-Item -Path $exePath.FullName -Destination "$tempDir/Handy.exe" -Force
+          
+          # Create .portable marker file to enable portable mode
+          New-Item -ItemType File -Path "$tempDir/.portable" -Force | Out-Null
+          Write-Host "Created .portable marker file"
+          
+          # Create empty data directory for portable mode
+          $dataDir = "$tempDir/data"
+          New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+          Write-Host "Created data directory for portable mode"
+          
+          # Copy resources directory if it exists
+          $resourcesSource = "src-tauri/resources"
+          if (Test-Path $resourcesSource) {
+            Write-Host "Copying resources directory..."
+            Copy-Item -Path $resourcesSource -Destination "$tempDir/resources" -Recurse -Force
+          }
+          
+          # Copy portable README if it exists
+          $readmePath = "src-tauri/PORTABLE_README.txt"
+          if (Test-Path $readmePath) {
+            Write-Host "Copying README..."
+            Copy-Item -Path $readmePath -Destination "$tempDir/PORTABLE_README.txt" -Force
+          }
+          
+          # Create ZIP archive
+          $arch = if ($target -match "aarch64") { "arm64" } else { "x64" }
+          $zipName = "Handy_${version}_${arch}_portable.zip"
+          $zipPath = "$portableDir/$zipName"
+          
+          Write-Host "Creating portable ZIP: $zipName"
+          
+          # Compress the directory
+          Compress-Archive -Path "$tempDir/*" -DestinationPath $zipPath -Force
+          
+          # Clean up temp directory
+          Remove-Item -Path $tempDir -Recurse -Force
+          
+          Write-Host "Portable ZIP created successfully: $zipPath"
+          
+          # List the contents
+          Get-ChildItem -Path $portableDir
+
+      - name: Upload portable ZIP to release (Windows)
+        if: contains(inputs.platform, 'windows') && inputs.release-id != ''
+        shell: pwsh
+        run: |
+          # Determine paths
+          $profile = "${{ steps.build-profile.outputs.profile }}"
+          $target = "${{ inputs.target }}"
+          $version = "${{ steps.get-version.outputs.version }}"
+          
+          if ($target -and $target -ne "x86_64-pc-windows-msvc") {
+            $basePath = "src-tauri/target/$target/$profile"
+          } else {
+            $basePath = "src-tauri/target/$profile"
+          }
+          
+          $portableDir = "$basePath/bundle/portable"
+          
+          # Find the ZIP file
+          $zipFile = Get-ChildItem -Path $portableDir -Filter "*.zip" | Select-Object -First 1
+          
+          if ($zipFile) {
+            Write-Host "Uploading portable ZIP to release: $($zipFile.Name)"
+            
+            # Use GitHub CLI to upload the asset
+            gh release upload "v$version" "$($zipFile.FullName)" --clobber
+          } else {
+            Write-Host "Warning: No portable ZIP found to upload"
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload artifacts (Linux)
         if: inputs.upload-artifacts && contains(inputs.platform, 'ubuntu')
         uses: actions/upload-artifact@v4
@@ -375,4 +486,5 @@ jobs:
           path: |
             src-tauri/target/${{ inputs.target != '' && inputs.target != 'x86_64-pc-windows-msvc' && format('{0}/{1}', inputs.target, steps.build-profile.outputs.profile) || steps.build-profile.outputs.profile }}/bundle/msi/*.msi
             src-tauri/target/${{ inputs.target != '' && inputs.target != 'x86_64-pc-windows-msvc' && format('{0}/{1}', inputs.target, steps.build-profile.outputs.profile) || steps.build-profile.outputs.profile }}/bundle/nsis/*.exe
+            src-tauri/target/${{ inputs.target != '' && inputs.target != 'x86_64-pc-windows-msvc' && format('{0}/{1}', inputs.target, steps.build-profile.outputs.profile) || steps.build-profile.outputs.profile }}/bundle/portable/*.zip
           retention-days: 30

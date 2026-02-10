@@ -1,3 +1,4 @@
+use crate::portable;
 use crate::settings::{get_settings, write_settings};
 use anyhow::Result;
 use flate2::read::GzDecoder;
@@ -64,9 +65,7 @@ pub struct ModelManager {
 impl ModelManager {
     pub fn new(app_handle: &AppHandle) -> Result<Self> {
         // Create models directory in app data
-        let models_dir = app_handle
-            .path()
-            .app_data_dir()
+        let models_dir = portable::get_app_data_dir(app_handle)
             .map_err(|e| anyhow::anyhow!("Failed to get app data dir: {}", e))?
             .join("models");
 

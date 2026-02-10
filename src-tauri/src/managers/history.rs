@@ -1,3 +1,4 @@
+use crate::portable;
 use anyhow::Result;
 use chrono::{DateTime, Local, Utc};
 use log::{debug, error, info};
@@ -54,7 +55,8 @@ pub struct HistoryManager {
 impl HistoryManager {
     pub fn new(app_handle: &AppHandle) -> Result<Self> {
         // Create recordings directory in app data dir
-        let app_data_dir = app_handle.path().app_data_dir()?;
+        let app_data_dir = portable::get_app_data_dir(app_handle)
+            .map_err(|e| anyhow::anyhow!("Failed to get app data dir: {}", e))?;
         let recordings_dir = app_data_dir.join("recordings");
         let db_path = app_data_dir.join("history.db");
 

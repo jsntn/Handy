@@ -67,3 +67,62 @@ bun install
 ```bash
 bun tauri dev
 ```
+
+## Building for Distribution
+
+### Build for Production
+
+```bash
+bun tauri build
+```
+
+This will create platform-specific installers in the `src-tauri/target/release/bundle/` directory.
+
+### Windows Build Outputs
+
+On Windows, the build process creates multiple distribution formats:
+
+- **MSI Installer**: `src-tauri/target/release/bundle/msi/` - Traditional Windows installer
+- **NSIS Installer**: `src-tauri/target/release/bundle/nsis/` - Setup executable
+- **Portable ZIP**: `src-tauri/target/release/bundle/portable/` - Standalone portable package
+
+#### Portable Build
+
+The portable build is a ZIP archive containing:
+- `Handy.exe` - The application executable
+- `resources/` - All required resources (models, icons, sounds)
+
+**To use the portable build:**
+1. Extract the ZIP file to any directory
+2. Run `Handy.exe` directly (no installation required)
+3. All application data and settings are stored in your user profile
+
+**Note:** The portable build requires:
+- Windows 10/11 (x64 or ARM64 depending on the build)
+- WebView2 runtime (usually pre-installed on Windows 11)
+- Visual C++ Redistributable (usually already present on modern Windows)
+
+### macOS Build Outputs
+
+- **DMG**: `src-tauri/target/[arch]/release/bundle/dmg/` - Disk image for distribution
+- **App Bundle**: `src-tauri/target/[arch]/release/bundle/macos/` - Application bundle
+
+### Linux Build Outputs
+
+- **DEB Package**: `src-tauri/target/release/bundle/deb/` - Debian/Ubuntu package
+- **RPM Package**: `src-tauri/target/release/bundle/rpm/` - Fedora/RHEL package
+- **AppImage**: `src-tauri/target/release/bundle/appimage/` - Portable Linux application
+
+## Downloading Pre-built Binaries
+
+Pre-built binaries, including portable builds, are available from:
+
+1. **GitHub Releases**: https://github.com/cjpais/Handy/releases
+   - All release builds include portable ZIP files for Windows
+   - Look for files named `Handy_[version]_[arch]_portable.zip`
+
+2. **GitHub Actions Artifacts**: For test builds
+   - Navigate to the Actions tab
+   - Select a completed workflow run
+   - Download artifacts (available for 30 days)
+   - Portable ZIPs are included in Windows build artifacts
